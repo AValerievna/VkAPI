@@ -13,8 +13,18 @@ service_token = "93b3e1fd93b3e1fd93b3e1fdea93d49ceb993b393b3e1fdcfa1d1e60429d7b4
 13490007
 
 
+class TimeLimiter:
+    def __init__(self, time_limit):
+        self._start = datetime.now()
+        self._time_limit = time_limit
+
+    def check_time(self):
+        if self._time_limit <= (datetime.now() - self._start).total_seconds():
+            raise Exception("Run out of time!")
+
+
 def get_vk_friends_path(id1, id2, max_time, max_depth, max_friend_count):
-    start_time = datetime.now()
+    time_limiter = TimeLimiter(max_time)
     path = ""
     first_id_map = {id1: None}
     first_friends_ids_set = {id1}
@@ -24,15 +34,16 @@ def get_vk_friends_path(id1, id2, max_time, max_depth, max_friend_count):
     for depth_level in range(max_depth):
         if len(first_friends_ids_set) < len(second_friends_ids_set):
             first_friends_ids_set = get_new_graph_layer(first_friends_ids_set, first_id_map, second_id_map,
-                                                        max_friend_count)
+                                                        max_friend_count, time_limiter)
             friends_intersection = get_intersection(first_friends_ids_set, second_id_map)
             print("kek")
         else:
             second_friends_ids_set = get_new_graph_layer(second_friends_ids_set, second_id_map, first_id_map,
-                                                         max_friend_count)
+                                                         max_friend_count, time_limiter)
             friends_intersection = get_intersection(first_friends_ids_set, second_id_map)
             print("cheburek")
 
+        time_limiter.check_time()
         if len(friends_intersection) != 0:
             print("FOUND!")
             first_path_part = get_path_part(friends_intersection[0], id1, first_id_map)
@@ -73,14 +84,16 @@ def get_intersection(first_friends_ids_set, second_id_map):
     return friends_intersection
 
 
-def get_new_graph_layer(friends_ids, source_id_map, id_map_to_compare, max_friends_limit):
+def get_new_graph_layer(friends_ids, source_id_map, id_map_to_compare, max_friends_limit, time_limiter):
     friends_of_friend_ids = set()
     for i in friends_ids:
         friends_id_list = get_friends(i, max_friends_limit)
+        time_limiter.check_time()
         friends_of_friend_ids.update(friends_id_list)
         add_to_id_map(source_id_map, friends_id_list, i)
         if len(get_intersection(set(friends_id_list), id_map_to_compare)) != 0:
             break
+        time_limiter.check_time()
     return friends_of_friend_ids
 
 
@@ -103,7 +116,7 @@ def add_to_id_map(id_map, id_list, parent_id):
 
 
 # get_vk_friends_path(13490007, 138848299, 1, 1, 1)
-get_vk_friends_path(48826742, 201548436, 1, 6, 300)
+get_vk_friends_path(48826742, 201548436, 30, 6, 300)
 
 # test ids:
 # start: 48826742
